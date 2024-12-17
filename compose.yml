@@ -1,0 +1,51 @@
+services:
+  unit-testing-api:
+    container_name: unit-testing-api
+    build:
+      context: ./
+      dockerfile: docker/unit-testing-api/Dockerfile
+    ports:
+      - '2137:2137'
+
+  php:
+    image: app-php
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: frankenphp_dev
+    environment:
+      SERVER_NAME: ${SERVER_NAME:-localhost}, php:80
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
+      TRUSTED_HOSTS: ${TRUSTED_HOSTS:-^$${SERVER_NAME:-example\.com|localhost}|php$$}
+
+      MERCURE_PUBLISHER_JWT_KEY: ${CADDY_MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
+      MERCURE_SUBSCRIBER_JWT_KEY: ${CADDY_MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
+      MERCURE_URL: ${CADDY_MERCURE_URL:-http://php/.well-known/mercure}
+      MERCURE_PUBLIC_URL: ${CADDY_MERCURE_PUBLIC_URL:-https://$${SERVER_NAME:-localhost}/.well-known/mercure}
+      MERCURE_JWT_SECRET: ${CADDY_MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
+    volumes:
+      - ./:/app
+      - caddy_data:/data
+      - caddy_config:/config
+    extra_hosts:
+      # for xdebug
+      - host.docker.internal:host-gateway
+    tty: true
+    ports:
+      # HTTP
+      - target: 80
+        published: 80
+        protocol: tcp
+      # HTTPS
+      - target: 443
+        published: 443
+        protocol: tcp
+      # HTTP/3
+      - target: 443
+        published: 443
+        protocol: udp
+
+volumes:
+  caddy_data:
+  caddy_config:
